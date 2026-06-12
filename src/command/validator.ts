@@ -23,10 +23,10 @@ export function validateCommand(command: DrawCommand, memory: SceneMemory): Vali
     case "connect": {
       const from = memory.resolve(command.from);
       if (from.kind === "missing") return { kind: "failed", reason: from.reason };
-      if (from.kind === "multiple") return needConfirm("起点", from.refs, command);
+      if (from.kind === "multiple") return needConfirm("起点", from.refs, command, "from");
       const to = memory.resolve(command.to);
       if (to.kind === "missing") return { kind: "failed", reason: to.reason };
-      if (to.kind === "multiple") return needConfirm("终点", to.refs, command);
+      if (to.kind === "multiple") return needConfirm("终点", to.refs, command, "to");
       return { kind: "ok", commands: [command] };
     }
     default: {
@@ -35,18 +35,24 @@ export function validateCommand(command: DrawCommand, memory: SceneMemory): Vali
         return { kind: "failed", reason: target.reason };
       }
       if (target.kind === "multiple") {
-        return needConfirm("目标", target.refs, command);
+        return needConfirm("目标", target.refs, command, "target");
       }
       return { kind: "ok", commands: [command] };
     }
   }
 }
 
-function needConfirm(label: string, candidates: ShapeRef[], command: DrawCommand): ValidateResult {
+function needConfirm(
+  label: string,
+  candidates: ShapeRef[],
+  command: DrawCommand,
+  role: "target" | "from" | "to",
+): ValidateResult {
   return {
     kind: "need_confirm",
     question: `找到 ${candidates.length} 个${label}候选，请说明要操作左边的、右边的或具体文字。`,
     candidates,
     command,
+    role,
   };
 }

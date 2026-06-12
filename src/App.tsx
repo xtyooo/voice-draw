@@ -144,7 +144,7 @@ function App() {
     }
     memory.select(candidate.id);
     setConfirmation(null);
-    const command = retargetCommand(confirmation.command, candidate);
+    const command = retargetCommand(confirmation.command, candidate, confirmation.role);
     const feedback = await executeCommands([command]);
     addLog({
       id: crypto.randomUUID(),
@@ -209,13 +209,16 @@ function App() {
   );
 }
 
-function retargetCommand(command: DrawCommand, candidate: ShapeRef): DrawCommand {
+function retargetCommand(command: DrawCommand, candidate: ShapeRef, role: "target" | "from" | "to"): DrawCommand {
   const target = { kind: "by_id" as const, id: candidate.id };
-  if ("target" in command) {
+  if (role === "target" && "target" in command) {
     return { ...command, target };
   }
-  if (command.intent === "connect") {
+  if (command.intent === "connect" && role === "from") {
     return { ...command, from: target };
+  }
+  if (command.intent === "connect" && role === "to") {
+    return { ...command, to: target };
   }
   return command;
 }
