@@ -133,7 +133,13 @@ export type ShapeRef = {
 export type ValidateResult =
   | { kind: "ok"; commands: DrawCommand[] }
   | { kind: "failed"; reason: string }
-  | { kind: "need_confirm"; question: string; candidates: ShapeRef[]; command: DrawCommand };
+  | {
+      kind: "need_confirm";
+      question: string;
+      candidates: ShapeRef[];
+      command: DrawCommand;
+      role: "target" | "from" | "to";
+    };
 
 export type CommandLogEntry = {
   id: string;
