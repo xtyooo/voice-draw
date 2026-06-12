@@ -33,5 +33,5 @@ export function buildMermaid(nodes: FlowNode[], edges: FlowEdge[]): string {
 }
 
 function escapeMermaidText(text: string): string {
-  return text.replace(/[\[\]{}]/g, "");
+  return text.replace(/[[\]{}]/g, "");
 }

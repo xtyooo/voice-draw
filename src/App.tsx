@@ -55,7 +55,7 @@ function App() {
     }
 
     setBusy(true);
-    const startedAt = Date.now();
+    const startedAt = createTimestamp();
     try {
       const parsed = await parseCommandText({
         text,
@@ -152,7 +152,7 @@ function App() {
       parserSource: "rule",
       status: "success",
       feedback,
-      createdAt: Date.now(),
+      createdAt: createTimestamp(),
       commands: [command],
     });
     setLatestAction(feedback);
@@ -207,6 +207,10 @@ function App() {
       </main>
     </div>
   );
+}
+
+function createTimestamp() {
+  return Date.now();
 }
 
 function retargetCommand(command: DrawCommand, candidate: ShapeRef, role: "target" | "from" | "to"): DrawCommand {

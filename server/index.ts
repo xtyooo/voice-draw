@@ -90,9 +90,9 @@ app.post("/api/ai/parse", async (req, res) => {
   }
 });
 
-const port = Number(process.env.PORT || 8787);
+const port = Number(process.env.PORT || process.env.VOICEDRAW_API_PORT || 8788);
 app.listen(port, () => {
-  console.log(`VoiceDraw API listening on http://localhost:${port}`);
+  console.log(`VoiceDraw API listening on http://127.0.0.1:${port}`);
 });
 
 function estimateCost(totalTokens: number): number {

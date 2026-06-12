@@ -37,5 +37,5 @@ VoiceDraw is a voice-first vector drawing tool for competition demonstration. Us
 ## Runtime Assumptions
 
 - Browser speech recognition works best in Chromium browsers.
-- The local API server listens on `PORT` or `8787`.
+- The local API server listens on `PORT`, `VOICEDRAW_API_PORT`, or `8788`; the competition web demo uses `http://127.0.0.1:5177`.
 - `OPENAI_BASE_URL` is OpenAI-compatible and includes a `/chat/completions` route.

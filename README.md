@@ -31,6 +31,11 @@ Run the full app with the local API server:
 npm run dev:full
 ```
 
+`dev:full` uses fixed project ports so it cannot silently show a different local app:
+
+- Web: `http://127.0.0.1:5177`
+- API: `http://127.0.0.1:8788`
+
 ## AI Configuration
 
 Create `.env` from `.env.example`:
@@ -39,7 +44,8 @@ Create `.env` from `.env.example`:
 OPENAI_API_KEY=your_key
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=gpt-4.1-mini
-PORT=8787
+PORT=8788
+VOICEDRAW_WEB_PORT=5177
 ```
 
 The browser never receives the API key. The frontend calls `/api/ai/parse`, and the Node server calls the OpenAI-compatible chat completions endpoint.
