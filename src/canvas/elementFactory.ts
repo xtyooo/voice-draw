@@ -7,6 +7,7 @@ import type { VoiceShape } from "../utils/shapeMap";
 export type CanvasSize = {
   width: number;
   height: number;
+  elementCount?: number;
 };
 
 const DEFAULT_CANVAS: CanvasSize = { width: 1200, height: 800 };
@@ -15,7 +16,9 @@ export function createShapeSkeleton(command: CreateShapeCommand, canvas = DEFAUL
   const layout = command.layout ?? {};
   const width = layout.width ?? (command.shape === "text" ? 220 : 170);
   const height = layout.height ?? (command.shape === "text" ? 42 : 90);
-  const point = resolvePoint(layout.position ?? "center", canvas, width, height);
+  const point = layout.position
+    ? resolvePoint(layout.position, canvas, width, height)
+    : resolveAutoPoint(canvas, width, height);
   const x = layout.x ?? point.x;
   const y = layout.y ?? point.y;
   const style = resolveStyle(command.style?.color, command.style?.strokeColor, command.style?.backgroundColor);
@@ -98,6 +101,21 @@ export function resolvePoint(position: PositionKeyword, canvas = DEFAULT_CANVAS,
   if (position === "top") return { x: canvas.width / 2 - width / 2, y: margin };
   if (position === "bottom") return { x: canvas.width / 2 - width / 2, y: canvas.height - height - margin };
   return { x: canvas.width / 2 - width / 2, y: canvas.height / 2 - height / 2 };
+}
+
+function resolveAutoPoint(canvas = DEFAULT_CANVAS, width: number, height: number) {
+  const count = canvas.elementCount ?? 0;
+  const columns = 3;
+  const gapX = Math.max(220, width + 80);
+  const gapY = Math.max(150, height + 70);
+  const row = Math.floor(count / columns);
+  const column = count % columns;
+  const startX = canvas.width / 2 - gapX;
+  const startY = Math.max(120, canvas.height / 2 - 120);
+  return {
+    x: startX + column * gapX - width / 2,
+    y: startY + row * gapY - height / 2,
+  };
 }
 
 function centerOf(ref: ShapeRef) {

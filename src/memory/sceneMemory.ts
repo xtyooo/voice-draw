@@ -15,6 +15,9 @@ type ElementLike = {
   backgroundColor?: string;
   strokeColor?: string;
   customData?: Record<string, unknown>;
+  label?: {
+    text?: string;
+  };
   isDeleted?: boolean;
 };
 
@@ -40,17 +43,18 @@ export class SceneMemory {
       }
       const color = inferColor(element);
       const existing = this.refs.get(element.id);
+      const text = inferText(element, existing);
       const ref: ShapeRef = {
         id: element.id,
         shape,
-        text: element.text || existing?.text,
+        text,
         color,
         x: element.x,
         y: element.y,
         width: element.width,
         height: element.height,
         createdAt: existing?.createdAt ?? Date.now(),
-        aliases: buildAliases(shape, element.text || existing?.text, color),
+        aliases: buildAliases(shape, text, color),
       };
       this.refs.set(element.id, ref);
     }
@@ -71,6 +75,14 @@ export class SceneMemory {
   trackCreatedMany(refs: ShapeRef[]) {
     refs.forEach((ref) => this.refs.set(ref.id, ref));
     const last = refs.at(-1);
+    if (last) {
+      this.lastId = last.id;
+      this.selectedId = last.id;
+    }
+  }
+
+  selectLast() {
+    const last = [...this.refs.values()].sort((a, b) => b.createdAt - a.createdAt)[0];
     if (last) {
       this.lastId = last.id;
       this.selectedId = last.id;
@@ -204,6 +216,14 @@ function inferColor(element: ElementLike): VoiceColor | undefined {
     return customColor as VoiceColor;
   }
   return getColorByBackground(element.backgroundColor)?.key ?? getColorByBackground(element.strokeColor)?.key;
+}
+
+function inferText(element: ElementLike, existing?: ShapeRef): string | undefined {
+  const customText = element.customData?.voiceText;
+  if (typeof customText === "string" && customText.trim()) {
+    return customText;
+  }
+  return element.text || element.label?.text || existing?.text;
 }
 
 function toVoiceShape(type: string): VoiceShape | undefined {

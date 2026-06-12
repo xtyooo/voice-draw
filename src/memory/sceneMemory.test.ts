@@ -35,6 +35,27 @@ describe("SceneMemory", () => {
     });
   });
 
+  it("indexes label and voice metadata text from canvas elements", () => {
+    const memory = new SceneMemory();
+    memory.syncFromElements([
+      {
+        id: "shape-with-label",
+        type: "rectangle",
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 80,
+        label: { text: "用户登录" },
+        customData: { voiceShape: "rectangle", voiceText: "用户登录" },
+      },
+    ]);
+
+    expect(memory.resolve({ kind: "by_text", text: "用户登录" })).toMatchObject({
+      kind: "found",
+      ref: { id: "shape-with-label" },
+    });
+  });
+
   it("returns multiple for ambiguous type-color refs and position can disambiguate", () => {
     const memory = new SceneMemory();
     memory.trackCreatedMany([

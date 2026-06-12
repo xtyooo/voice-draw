@@ -51,6 +51,11 @@ export function parseRuleCommand(input: string): ParsedCommand | null {
     return null;
   }
 
+  const flowchart = parseFlowchart(text);
+  if (flowchart) {
+    return parsed(input, [flowchart], "已识别为本地流程图命令");
+  }
+
   const utility = parseUtility(text);
   if (utility) {
     return parsed(input, [utility], "已识别为画布控制命令");
@@ -115,15 +120,15 @@ function parseUtility(text: string): DrawCommand | null {
 }
 
 function parseCreate(text: string): CreateShapeCommand | null {
-  const quoted = extractQuotedText(text);
+  const textContent = extractDrawableText(text);
   const writesText = /写|添加文字|文本|文字/.test(text);
-  if (writesText && quoted) {
+  if (writesText && textContent) {
     return {
       intent: "create_shape",
       shape: "text",
-      text: quoted,
+      text: textContent,
       style: { strokeColor: "#1e1e1e" },
-      layout: { position: findPosition(text) ?? "center", width: 180, height: 40 },
+      layout: { position: findPosition(text), width: Math.max(180, textContent.length * 28), height: 46 },
     };
   }
 
@@ -141,7 +146,7 @@ function parseCreate(text: string): CreateShapeCommand | null {
   return {
     intent: "create_shape",
     shape: shape.key,
-    text: quoted,
+    text: textContent,
     style: color
       ? {
           color: color.key,
@@ -150,7 +155,7 @@ function parseCreate(text: string): CreateShapeCommand | null {
         }
       : undefined,
     layout: {
-      position: findPosition(text) ?? "center",
+      position: findPosition(text),
       width: size.width,
       height: size.height,
     },
@@ -251,12 +256,12 @@ export function parseTarget(text: string): TargetRef {
     return { kind: "ordinal", index: ordinal[0], shape };
   }
 
-  if (/它|当前|选中/.test(text)) {
-    return { kind: "selected" };
+  if (/刚才|刚刚|刚画|刚创建|上一个|最近|最后/.test(text)) {
+    return { kind: "last", shape };
   }
 
-  if (/刚才|上一个|最近/.test(text)) {
-    return { kind: "last", shape };
+  if (/它|这|这个|那个|当前|选中|该/.test(text)) {
+    return { kind: "selected" };
   }
 
   const position = findPosition(text);
@@ -319,4 +324,79 @@ function parseDistance(text: string): number {
 export function colorTarget(color: VoiceColor): TargetRef {
   const colorInfo = getColorInfo(color);
   return { kind: "by_type_color", color: colorInfo.key };
+}
+
+function extractDrawableText(text: string): string | undefined {
+  const quoted = extractQuotedText(text);
+  if (quoted) {
+    return quoted;
+  }
+  const value = extractAfterKeyword(text, ["写", "添加文字", "文字是", "文本是", "叫做", "名为"]);
+  if (!value) {
+    return undefined;
+  }
+  return value.replace(/^(上|下|左|右|中间|中央|中心)/, "").trim() || undefined;
+}
+
+function parseFlowchart(text: string): DrawCommand | null {
+  if (!/流程图|流程/.test(text)) {
+    return null;
+  }
+
+  if (/登录|登陆/.test(text)) {
+    return {
+      intent: "create_flowchart",
+      mermaid: [
+        "flowchart TD",
+        "A[输入账号密码] --> B{校验信息}",
+        "B -- 成功 --> C[进入首页]",
+        "B -- 失败 --> D[提示重新输入]",
+      ].join("\n"),
+    };
+  }
+
+  if (/注册/.test(text)) {
+    return {
+      intent: "create_flowchart",
+      mermaid: [
+        "flowchart TD",
+        "A[填写注册信息] --> B{校验信息}",
+        "B -- 通过 --> C[发送验证码]",
+        "C --> D[创建账号]",
+        "B -- 不通过 --> E[提示修改信息]",
+      ].join("\n"),
+    };
+  }
+
+  if (/订单|支付|付款/.test(text)) {
+    return {
+      intent: "create_flowchart",
+      mermaid: [
+        "flowchart TD",
+        "A[提交订单] --> B[选择支付方式]",
+        "B --> C{支付结果}",
+        "C -- 成功 --> D[生成订单]",
+        "C -- 失败 --> E[提示重新支付]",
+      ].join("\n"),
+    };
+  }
+
+  const steps = text
+    .replace(/^.*流程图,?/, "")
+    .replace(/^从/, "")
+    .split(/开始|然后|接着|之后|再|最后|,/)
+    .map((item) => item.replace(/^(从|把|将)/, "").replace(/(结束|完成)$/, "").trim())
+    .filter(Boolean)
+    .slice(0, 6);
+
+  if (steps.length < 2) {
+    return null;
+  }
+
+  const ids = ["A", "B", "C", "D", "E", "F"];
+  const lines = ["flowchart TD", ...steps.map((step, index) => `${ids[index]}[${step}]`)];
+  for (let index = 0; index < steps.length - 1; index += 1) {
+    lines.push(`${ids[index]} --> ${ids[index + 1]}`);
+  }
+  return { intent: "create_flowchart", mermaid: lines.join("\n") };
 }

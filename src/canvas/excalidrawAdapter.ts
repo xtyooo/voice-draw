@@ -57,27 +57,30 @@ export class ExcalidrawAdapter {
 
     if (command.intent === "create_shape") {
       const skeleton = createShapeSkeleton(command, this.canvasSize());
-      const [element] = convertToExcalidrawElements([skeleton], { regenerateIds: true });
-      const color = command.style?.color;
-      const next = [
-        ...this.elements(),
+      const elements = convertToExcalidrawElements([skeleton], { regenerateIds: true }).map((element) =>
         withVoiceData(element, {
           voiceShape: command.shape,
-          voiceColor: color,
+          voiceColor: command.style?.color,
           voiceText: command.text,
         }),
-      ];
-      this.api.updateScene({ elements: next, appState: { selectedElementIds: { [element.id]: true } } });
+      );
+      const primaryElement = elements.find((element) => element.type === command.shape) ?? elements[0];
+      if (!primaryElement) {
+        throw new Error("创建图形失败，请换一种说法");
+      }
+      const color = command.style?.color;
+      const next = [...this.elements(), ...elements];
+      this.api.updateScene({ elements: next, appState: { selectedElementIds: { [primaryElement.id]: true } } });
       this.memory.trackCreated(
         createShapeRef({
-          id: element.id,
+          id: primaryElement.id,
           shape: command.shape,
           text: command.text,
           color,
-          x: element.x,
-          y: element.y,
-          width: element.width,
-          height: element.height,
+          x: primaryElement.x,
+          y: primaryElement.y,
+          width: primaryElement.width,
+          height: primaryElement.height,
         }),
       );
       this.toast("已添加图形");
@@ -152,24 +155,28 @@ export class ExcalidrawAdapter {
     if (command.intent === "connect") {
       const from = this.resolveOne(command.from);
       const to = this.resolveOne(command.to);
-      const [element] = convertToExcalidrawElements([createArrowSkeleton(from, to, command.label)], { regenerateIds: true });
-      const next = [
-        ...this.elements(),
-        withVoiceData(element, {
-          voiceShape: "arrow",
-          voiceText: command.label,
-        }),
-      ];
-      this.api.updateScene({ elements: next, appState: { selectedElementIds: { [element.id]: true } } });
+      const elements = convertToExcalidrawElements([createArrowSkeleton(from, to, command.label)], { regenerateIds: true }).map(
+        (element) =>
+          withVoiceData(element, {
+            voiceShape: element.type === "text" ? "text" : "arrow",
+            voiceText: command.label,
+          }),
+      );
+      const primaryElement = elements.find((element) => element.type === "arrow") ?? elements[0];
+      if (!primaryElement) {
+        throw new Error("创建连接线失败，请换一种说法");
+      }
+      const next = [...this.elements(), ...elements];
+      this.api.updateScene({ elements: next, appState: { selectedElementIds: { [primaryElement.id]: true } } });
       this.memory.trackCreated(
         createShapeRef({
-          id: element.id,
+          id: primaryElement.id,
           shape: "arrow",
           text: command.label,
-          x: element.x,
-          y: element.y,
-          width: element.width,
-          height: element.height,
+          x: primaryElement.x,
+          y: primaryElement.y,
+          width: primaryElement.width,
+          height: primaryElement.height,
         }),
       );
       this.toast("已添加箭头");
@@ -195,6 +202,7 @@ export class ExcalidrawAdapter {
       const next = [...this.elements(), ...elements];
       this.api.updateScene({ elements: next });
       this.memory.syncFromElements(next);
+      this.memory.selectLast();
       this.toast("已生成流程图");
       return { feedback: "已生成流程图", changed: true };
     }
@@ -279,6 +287,7 @@ export class ExcalidrawAdapter {
     return {
       width: Math.max(900, state.width || 1200),
       height: Math.max(600, state.height || 800),
+      elementCount: this.elements().length,
     };
   }
 

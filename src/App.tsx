@@ -49,7 +49,7 @@ function App() {
   }
 
   async function executeText(textOverride?: string) {
-    const text = (textOverride ?? voice.transcript ?? manualText).trim();
+    const text = ((textOverride ?? voice.transcript) || manualText).trim();
     if (!text || !adapterRef.current) {
       return;
     }

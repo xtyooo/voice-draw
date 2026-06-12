@@ -20,6 +20,15 @@ describe("parseRuleCommand", () => {
     });
   });
 
+  it("parses unquoted text creation", () => {
+    const parsed = parseRuleCommand("在中间写用户登录");
+    expect(parsed?.commands[0]).toMatchObject({
+      intent: "create_shape",
+      shape: "text",
+      text: "用户登录",
+    });
+  });
+
   it("parses update, move, delete, undo, and clear commands", () => {
     expect(parseRuleCommand("把刚才的矩形放大一点")?.commands[0]).toMatchObject({
       intent: "update_shape",
@@ -27,6 +36,7 @@ describe("parseRuleCommand", () => {
     });
     expect(parseRuleCommand("把它往右移动一点")?.commands[0]).toMatchObject({
       intent: "move_shape",
+      target: { kind: "selected" },
       direction: "right",
     });
     expect(parseRuleCommand("删除刚才的箭头")?.commands[0]).toMatchObject({
@@ -46,5 +56,13 @@ describe("parseRuleCommand", () => {
 
   it("detects complex flowchart input for AI", () => {
     expect(requiresAiParsing("画一个登录流程图，从输入账号密码开始，然后校验信息")).toBe(true);
+  });
+
+  it("creates local fallback flowcharts for common demos", () => {
+    const parsed = parseRuleCommand("画一个登录流程图，从输入账号密码开始，接着校验信息，成功后进入首页，失败后提示重新输入");
+    expect(parsed?.commands[0]).toMatchObject({
+      intent: "create_flowchart",
+      mermaid: expect.stringContaining("输入账号密码"),
+    });
   });
 });
