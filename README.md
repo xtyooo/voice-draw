@@ -1,73 +1,66 @@
-# React + TypeScript + Vite
+# VoiceDraw
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+VoiceDraw is a competition demo project for voice-first vector drawing. It uses Excalidraw as the canvas core, local command rules for fast drawing operations, and an OpenAI-compatible API for complex flowchart parsing.
 
-Currently, two official plugins are available:
+## SDD Workflow
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+This project follows Specification-Driven Development:
 
-## React Compiler
+1. Document intent, command contracts, and acceptance cases in `docs/`.
+2. Implement the command pipeline against those contracts.
+3. Verify parser, memory, AI fallback, and canvas behavior with tests and a local demo.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Development
 
-## Expanding the ESLint configuration
+Codex shell sessions may not inherit the nvm4w path. Prefix commands when needed:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```powershell
+$env:Path = 'C:\nvm4w\nodejs;C:\Users\Administrator\AppData\Local\nvm;' + $env:Path
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Install and run:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```powershell
+npm install
+npm run dev
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Run the full app with the local API server:
+
+```powershell
+npm run dev:full
+```
+
+## AI Configuration
+
+Create `.env` from `.env.example`:
+
+```text
+OPENAI_API_KEY=your_key
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_MODEL=gpt-4.1-mini
+PORT=8787
+```
+
+The browser never receives the API key. The frontend calls `/api/ai/parse`, and the Node server calls the OpenAI-compatible chat completions endpoint.
+
+## Core Demo Commands
+
+- `画一个红色圆形`
+- `画一个蓝色矩形`
+- `在中间写“用户登录”`
+- `画一条从圆形到矩形的箭头`
+- `把刚才的矩形放大一点`
+- `选中蓝色的节点`
+- `把它往右移动一点`
+- `删除左边的红色圆形`
+- `撤销上一步`
+- `清空画布`
+- `画一个登录流程图，从输入账号密码开始，接着校验信息，成功后进入首页，失败后提示重新输入`
+
+## Verification
+
+```powershell
+npm run test
+npm run build
 ```
