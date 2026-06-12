@@ -12,32 +12,34 @@ export function validateCommands(commands: DrawCommand[], memory: SceneMemory): 
 }
 
 export function validateCommand(command: DrawCommand, memory: SceneMemory): ValidateResult {
-  if (command.intent === "create_shape" || command.intent === "create_flowchart" || isUtility(command.intent)) {
-    return { kind: "ok", commands: [command] };
+  switch (command.intent) {
+    case "create_shape":
+    case "create_flowchart":
+    case "undo":
+    case "redo":
+    case "clear_canvas":
+    case "export_image":
+      return { kind: "ok", commands: [command] };
+    case "connect": {
+      const from = memory.resolve(command.from);
+      if (from.kind === "missing") return { kind: "failed", reason: from.reason };
+      if (from.kind === "multiple") return needConfirm("起点", from.refs, command);
+      const to = memory.resolve(command.to);
+      if (to.kind === "missing") return { kind: "failed", reason: to.reason };
+      if (to.kind === "multiple") return needConfirm("终点", to.refs, command);
+      return { kind: "ok", commands: [command] };
+    }
+    default: {
+      const target = memory.resolve(command.target);
+      if (target.kind === "missing") {
+        return { kind: "failed", reason: target.reason };
+      }
+      if (target.kind === "multiple") {
+        return needConfirm("目标", target.refs, command);
+      }
+      return { kind: "ok", commands: [command] };
+    }
   }
-
-  if (command.intent === "connect") {
-    const from = memory.resolve(command.from);
-    if (from.kind === "missing") return { kind: "failed", reason: from.reason };
-    if (from.kind === "multiple") return needConfirm("起点", from.refs, command);
-    const to = memory.resolve(command.to);
-    if (to.kind === "missing") return { kind: "failed", reason: to.reason };
-    if (to.kind === "multiple") return needConfirm("终点", to.refs, command);
-    return { kind: "ok", commands: [command] };
-  }
-
-  const target = memory.resolve(command.target);
-  if (target.kind === "missing") {
-    return { kind: "failed", reason: target.reason };
-  }
-  if (target.kind === "multiple") {
-    return needConfirm("目标", target.refs, command);
-  }
-  return { kind: "ok", commands: [command] };
-}
-
-function isUtility(intent: DrawCommand["intent"]): intent is "undo" | "redo" | "clear_canvas" | "export_image" {
-  return intent === "undo" || intent === "redo" || intent === "clear_canvas" || intent === "export_image";
 }
 
 function needConfirm(label: string, candidates: ShapeRef[], command: DrawCommand): ValidateResult {

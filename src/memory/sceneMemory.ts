@@ -151,8 +151,9 @@ export class SceneMemory {
     if (criteria.color) {
       refs = refs.filter((ref) => ref.color === criteria.color);
     }
-    if (criteria.text) {
-      refs = refs.filter((ref) => ref.text?.includes(criteria.text) || ref.aliases.some((alias) => alias.includes(criteria.text!)));
+    const text = criteria.text;
+    if (text) {
+      refs = refs.filter((ref) => ref.text?.includes(text) || ref.aliases.some((alias) => alias.includes(text)));
     }
     if (criteria.position) {
       refs = sortByPosition(refs, criteria.position).slice(0, 1);
