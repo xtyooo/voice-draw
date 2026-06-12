@@ -210,7 +210,7 @@ function App() {
 }
 
 function retargetCommand(command: DrawCommand, candidate: ShapeRef): DrawCommand {
-  const target = { kind: "by_text" as const, text: candidate.text ?? candidate.id };
+  const target = { kind: "by_id" as const, id: candidate.id };
   if ("target" in command) {
     return { ...command, target };
   }

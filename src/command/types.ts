@@ -9,6 +9,7 @@ export type Direction = "left" | "right" | "up" | "down";
 export type TargetRef =
   | { kind: "last"; shape?: VoiceShape }
   | { kind: "selected" }
+  | { kind: "by_id"; id: string }
   | { kind: "by_text"; text: string }
   | { kind: "by_type_color"; shape?: VoiceShape; color?: VoiceColor; position?: PositionKeyword }
   | { kind: "ordinal"; index: number; shape?: VoiceShape }

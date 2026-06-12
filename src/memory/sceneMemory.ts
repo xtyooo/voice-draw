@@ -121,6 +121,11 @@ export class SceneMemory {
       return selected ? { kind: "found", ref: selected } : { kind: "missing", reason: "当前没有选中的对象" };
     }
 
+    if (target.kind === "by_id") {
+      const ref = this.refs.get(target.id);
+      return ref ? { kind: "found", ref } : { kind: "missing", reason: "没有找到指定 ID 的对象" };
+    }
+
     if (target.kind === "by_text") {
       return this.toResolveResult(this.filter({ text: target.text }), "没有找到文字匹配的对象");
     }

@@ -28,6 +28,7 @@ describe("SceneMemory", () => {
     ]);
 
     expect(memory.resolve({ kind: "by_text", text: "校验" })).toMatchObject({ kind: "found", ref: { id: "b" } });
+    expect(memory.resolve({ kind: "by_id", id: "a" })).toMatchObject({ kind: "found", ref: { id: "a" } });
     expect(memory.resolve({ kind: "ordinal", index: 1, shape: "rectangle" })).toMatchObject({
       kind: "found",
       ref: { id: "a" },
