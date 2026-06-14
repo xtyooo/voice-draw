@@ -54,6 +54,26 @@ describe("parseRuleCommand", () => {
     });
   });
 
+  it("parses attaching a new shape to the side of an existing shape", () => {
+    const parsed = parseRuleCommand("在正方形的右面接一个圆形");
+    expect(parsed?.source).toBe("rule");
+    expect(parsed?.commands).toHaveLength(2);
+    expect(parsed?.commands[0]).toMatchObject({
+      intent: "create_shape",
+      shape: "ellipse",
+      layout: {
+        position: "right",
+        relativeTo: { kind: "by_type_color", shape: "rectangle" },
+      },
+    });
+    expect(parsed?.commands[1]).toMatchObject({
+      intent: "connect",
+      from: { kind: "by_type_color", shape: "rectangle" },
+      to: { kind: "last", shape: "ellipse" },
+      lineType: "arrow",
+    });
+  });
+
   it("splits sequential local drawing commands", () => {
     const parsed = parseRuleCommand("画一个红色圆形，然后画一个蓝色矩形，再画一条从圆形到矩形的箭头");
     expect(parsed?.commands).toHaveLength(3);

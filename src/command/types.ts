@@ -28,6 +28,7 @@ export type CreateShapeCommand = {
   style?: ShapeStyle;
   layout?: {
     position?: PositionKeyword;
+    relativeTo?: TargetRef;
     x?: number;
     y?: number;
     width?: number;

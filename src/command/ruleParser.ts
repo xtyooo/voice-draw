@@ -66,6 +66,11 @@ export function parseRuleCommand(input: string): ParsedCommand | null {
     return parsed(input, [utility], "已识别为画布控制命令");
   }
 
+  const attach = parseAttachShape(text);
+  if (attach) {
+    return parsed(input, attach, "已识别为相对创建并连接命令");
+  }
+
   const connect = parseConnect(text);
   if (connect) {
     return parsed(input, [connect], "已识别为连接命令");
@@ -134,6 +139,11 @@ function parseSingleCommand(text: string): ParsedCommand | null {
   const utility = parseUtility(text);
   if (utility) {
     return parsed(text, [utility], "已识别为画布控制命令");
+  }
+
+  const attach = parseAttachShape(text);
+  if (attach) {
+    return parsed(text, attach, "已识别为相对创建并连接命令");
   }
 
   const connect = parseConnect(text);
@@ -298,6 +308,54 @@ function parseDelete(text: string): DrawCommand | null {
   };
 }
 
+function parseAttachShape(text: string): DrawCommand[] | null {
+  if (!/接|连|连接|追加|加/.test(text) || !/(右面|右边|右侧|左面|左边|左侧|上面|上方|下面|下方|旁边)/.test(text)) {
+    return null;
+  }
+
+  const match = text.match(/(?:在)?(.+?)的?(右面|右边|右侧|左面|左边|左侧|上面|上方|下面|下方|旁边)(?:接|连|连接|追加|加)(?:一个|一)?(.+)/);
+  if (!match) {
+    return null;
+  }
+
+  const from = parseTarget(match[1]);
+  const position = sideToPosition(match[2]);
+  const shape = findShape(match[3]);
+  if (!shape || shape.key === "arrow") {
+    return null;
+  }
+
+  const color = findColor(match[3]);
+  const size = inferSize(match[3], shape.key);
+  const create: CreateShapeCommand = {
+    intent: "create_shape",
+    shape: shape.key,
+    style: color
+      ? {
+          color: color.key,
+          strokeColor: color.strokeColor,
+          backgroundColor: color.backgroundColor,
+        }
+      : undefined,
+    layout: {
+      position,
+      relativeTo: from,
+      width: size.width,
+      height: size.height,
+    },
+  };
+
+  return [
+    create,
+    {
+      intent: "connect",
+      from,
+      to: { kind: "last", shape: shape.key },
+      lineType: "arrow",
+    },
+  ];
+}
+
 function parseConnect(text: string): DrawCommand | null {
   if (!/箭头|连接|连线/.test(text) || !/从/.test(text) || !/到/.test(text)) {
     return null;
@@ -312,6 +370,13 @@ function parseConnect(text: string): DrawCommand | null {
     to: parseTarget(match[2]),
     lineType: "arrow",
   };
+}
+
+function sideToPosition(side: string): PositionKeyword {
+  if (/左/.test(side)) return "left";
+  if (/上/.test(side)) return "top";
+  if (/下/.test(side)) return "bottom";
+  return "right";
 }
 
 export function parseTarget(text: string): TargetRef {

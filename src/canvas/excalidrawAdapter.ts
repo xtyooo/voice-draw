@@ -56,26 +56,27 @@ export class ExcalidrawAdapter {
     this.capture();
 
     if (command.intent === "create_shape") {
-      const skeleton = createShapeSkeleton(command, this.canvasSize());
+      const createCommand = this.withRelativeLayout(command);
+      const skeleton = createShapeSkeleton(createCommand, this.canvasSize());
       const elements = convertToExcalidrawElements([skeleton], { regenerateIds: true }).map((element) =>
         withVoiceData(element, {
-          voiceShape: command.shape,
-          voiceColor: command.style?.color,
-          voiceText: command.text,
+          voiceShape: createCommand.shape,
+          voiceColor: createCommand.style?.color,
+          voiceText: createCommand.text,
         }),
       );
-      const primaryElement = elements.find((element) => element.type === command.shape) ?? elements[0];
+      const primaryElement = elements.find((element) => element.type === createCommand.shape) ?? elements[0];
       if (!primaryElement) {
         throw new Error("创建图形失败，请换一种说法");
       }
-      const color = command.style?.color;
+      const color = createCommand.style?.color;
       const next = [...this.elements(), ...elements];
       this.api.updateScene({ elements: next, appState: { selectedElementIds: { [primaryElement.id]: true } } });
       this.memory.trackCreated(
         createShapeRef({
           id: primaryElement.id,
-          shape: command.shape,
-          text: command.text,
+          shape: createCommand.shape,
+          text: createCommand.text,
           color,
           x: primaryElement.x,
           y: primaryElement.y,
@@ -208,6 +209,44 @@ export class ExcalidrawAdapter {
     }
 
     return { feedback: "命令尚未支持", changed: false };
+  }
+
+  private withRelativeLayout(command: Extract<DrawCommand, { intent: "create_shape" }>) {
+    const relativeTo = command.layout?.relativeTo;
+    const position = command.layout?.position;
+    if (!relativeTo || !position) {
+      return command;
+    }
+
+    const target = this.resolveOne(relativeTo);
+    const width = command.layout?.width ?? (command.shape === "text" ? 220 : 170);
+    const height = command.layout?.height ?? (command.shape === "text" ? 42 : 90);
+    const gap = 80;
+    const centerX = target.x + target.width / 2;
+    const centerY = target.y + target.height / 2;
+    const x =
+      position === "right"
+        ? target.x + target.width + gap
+        : position === "left"
+          ? target.x - width - gap
+          : centerX - width / 2;
+    const y =
+      position === "bottom"
+        ? target.y + target.height + gap
+        : position === "top"
+          ? target.y - height - gap
+          : centerY - height / 2;
+
+    return {
+      ...command,
+      layout: {
+        ...command.layout,
+        x,
+        y,
+        width,
+        height,
+      },
+    };
   }
 
   syncMemory() {
