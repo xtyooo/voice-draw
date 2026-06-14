@@ -2,6 +2,13 @@
 
 VoiceDraw is a competition demo project for voice-first vector drawing. It uses Excalidraw as the canvas core, local command rules for fast drawing operations, and an OpenAI-compatible API for complex flowchart parsing.
 
+## Competition Deliverables
+
+- App: voice-only Excalidraw canvas with browser ASR, local command parsing, AI flowchart parsing, and ambiguity confirmation.
+- Design document: [`docs/design.md`](docs/design.md)
+- Demo script: [`docs/demo-script.md`](docs/demo-script.md)
+- Supported commands: [`docs/supported-commands.md`](docs/supported-commands.md)
+
 ## SDD Workflow
 
 This project follows Specification-Driven Development:
@@ -35,6 +42,12 @@ npm run dev:full
 
 - Web: `http://127.0.0.1:5177`
 - API: `http://127.0.0.1:8788`
+
+## Voice Recognition / ASR
+
+The current competition version already includes ASR through `react-speech-recognition`, which wraps the browser Web Speech API. Use a Chromium-based browser, allow microphone access, click the microphone button, then speak commands directly. Drawing commands auto-run after a short pause; there is no manual drawing input in competition mode.
+
+External ASR services or local Whisper are not required for the current demo. They are documented as follow-up options in [`docs/design.md`](docs/design.md) for browsers or venues where Web Speech API quality is not enough.
 
 ## AI Configuration
 

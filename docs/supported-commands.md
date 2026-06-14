@@ -17,6 +17,19 @@
 | 撤销上一步 | `undo` | Uses app-level history snapshots. |
 | 清空画布 | `clear_canvas` | Clears elements and memory. |
 | 导出图片 | `export_image` | Downloads PNG. |
+| 画一个红色圆形，然后画一个蓝色矩形，再画一条从圆形到矩形的箭头 | multiple intents | Splits local commands by sequence words and executes them step by step. |
+| 画一个蓝色矩形，然后把它放大一点，再把它改成绿色 | multiple intents | Later steps can use the selected object created by earlier steps. |
+
+## Voice-Only Confirmation
+
+When a target is ambiguous, VoiceDraw shows candidate numbers but does not expose click-to-confirm drawing actions. Continue by voice:
+
+| Spoken answer | Result |
+| --- | --- |
+| 选第一个 / 第一个 | Chooses the first candidate. |
+| 左边那个 / 右边那个 | Chooses by canvas position. |
+| 选择“登录”这个 | Chooses by text or alias. |
+| 取消 | Cancels the pending confirmation. |
 
 ## AI Commands
 
