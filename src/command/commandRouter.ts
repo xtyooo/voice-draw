@@ -8,11 +8,9 @@ export async function parseCommandText(input: {
   sceneSummary: string;
   parseWithAi: AiParseClient;
 }): Promise<ParsedCommand> {
-  if (!requiresAiParsing(input.text)) {
-    const local = parseRuleCommand(input.text);
-    if (local) {
-      return local;
-    }
+  const local = parseRuleCommand(input.text);
+  if (local && (!requiresAiParsing(input.text) || shouldPreferLocal(local))) {
+    return local;
   }
 
   try {
@@ -28,4 +26,8 @@ export async function parseCommandText(input: {
     }
     throw error;
   }
+}
+
+function shouldPreferLocal(parsed: ParsedCommand): boolean {
+  return parsed.commands.length > 1;
 }

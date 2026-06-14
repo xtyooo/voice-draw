@@ -13,6 +13,18 @@ describe("parseCommandText", () => {
     expect(ai).not.toHaveBeenCalled();
   });
 
+  it("uses local rules for multi-step drawing commands before AI", async () => {
+    const ai = vi.fn();
+    const parsed = await parseCommandText({
+      text: "画一个红色圆形，然后画一个蓝色矩形，再画一条从圆形到矩形的箭头",
+      sceneSummary: "",
+      parseWithAi: ai,
+    });
+    expect(parsed.source).toBe("rule");
+    expect(parsed.commands).toHaveLength(3);
+    expect(ai).not.toHaveBeenCalled();
+  });
+
   it("uses AI for complex commands", async () => {
     const ai = vi.fn().mockResolvedValue({
       source: "ai",
