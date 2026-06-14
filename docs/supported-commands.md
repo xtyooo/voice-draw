@@ -44,7 +44,7 @@ Commands with `流程图`, `从`, `然后`, `接着`, `成功后`, or `失败后
 }
 ```
 
-The server first requests strict JSON from the model. If the provider rejects `response_format`, it retries without that option and extracts JSON from the model text. This path has been verified with DashScope's OpenAI-compatible endpoint.
+The server first requests strict JSON from the model. If the provider rejects `response_format`, it retries without that option and extracts JSON from the model text. The extracted commands must still match the VoiceDraw command schema; unsupported intents, incomplete commands, and empty results are rejected before reaching the canvas. This path has been verified with DashScope's OpenAI-compatible endpoint.
 
 ## Failure Feedback
 

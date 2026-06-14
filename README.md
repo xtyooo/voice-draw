@@ -45,7 +45,7 @@ npm run dev:full
 
 ## Voice Recognition / ASR
 
-The current competition version already includes ASR through `react-speech-recognition`, which wraps the browser Web Speech API. Use a Chromium-based browser, allow microphone access, click the microphone button, then speak commands directly. Drawing commands auto-run after a short pause; there is no manual drawing input in competition mode.
+The current competition version already includes ASR through `react-speech-recognition`, which wraps the browser Web Speech API. Use a Chromium-based browser, allow microphone access, click the microphone button, then speak commands directly. The microphone button only starts or stops browser listening; drawing, editing, confirmation, and export commands still run through speech. Drawing commands auto-run after a short pause; there is no manual drawing input in competition mode.
 
 External ASR services or local Whisper are not required for the current demo. They are documented as follow-up options in [`docs/design.md`](docs/design.md) for browsers or venues where Web Speech API quality is not enough.
 
@@ -70,7 +70,7 @@ OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 OPENAI_MODEL=qwen3.6-plus
 ```
 
-VoiceDraw asks the model for JSON first. If a compatible provider does not support `response_format`, the server retries once without that option and still extracts JSON from plain text or fenced `json` blocks. This keeps the demo usable when different model gateways return slightly different formats.
+VoiceDraw asks the model for JSON first. If a compatible provider does not support `response_format`, the server retries once without that option and still extracts JSON from plain text or fenced `json` blocks. The server validates every AI command before the frontend sees it, rejecting unknown intents, incomplete commands, and empty results. This keeps the demo usable when different model gateways return slightly different formats.
 
 ## Core Demo Commands
 

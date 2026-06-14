@@ -7,6 +7,7 @@
 - The app sends text instructions and compact scene summaries, never full canvas screenshots.
 - AI responses must be Mermaid or structured JSON and are validated before execution.
 - The server retries once without `response_format` when an OpenAI-compatible provider does not support strict JSON mode.
+- Empty AI results and commands outside the supported VoiceDraw schema are rejected before any canvas change.
 - Repeated demo prompts can be served from local examples when API credentials are missing.
 
 ## UI Metrics

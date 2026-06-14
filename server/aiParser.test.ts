@@ -53,6 +53,79 @@ describe("parseAiResponseContent", () => {
     ]);
     expect(parsed.estimatedCost).toBe(0.000025);
   });
+
+  it("rejects empty AI results instead of reporting success", () => {
+    expect(() =>
+      buildParsedAiCommand({
+        text: "画一个复杂图",
+        content: JSON.stringify({ commands: [] }),
+      }),
+    ).toThrow("AI 没有生成可执行绘图命令");
+  });
+
+  it("rejects commands with unsupported intents before they reach the canvas", () => {
+    expect(() =>
+      buildParsedAiCommand({
+        text: "画一个图",
+        content: JSON.stringify({
+          commands: [{ intent: "open_url", url: "https://example.com" }],
+        }),
+      }),
+    ).toThrow("AI 返回的绘图命令格式无效");
+  });
+
+  it("rejects incomplete shape commands from the model", () => {
+    expect(() =>
+      buildParsedAiCommand({
+        text: "画一个红色圆形",
+        content: JSON.stringify({
+          commands: [{ intent: "create_shape", style: { color: "red" } }],
+        }),
+      }),
+    ).toThrow("AI 返回的绘图命令格式无效");
+  });
+
+  it("rejects shape creation that should use a connect command", () => {
+    expect(() =>
+      buildParsedAiCommand({
+        text: "画一个箭头",
+        content: JSON.stringify({
+          commands: [{ intent: "create_shape", shape: "arrow" }],
+        }),
+      }),
+    ).toThrow("AI 返回的绘图命令格式无效");
+  });
+
+  it("rejects empty edit and move commands from the model", () => {
+    expect(() =>
+      buildParsedAiCommand({
+        text: "改一下它",
+        content: JSON.stringify({
+          commands: [{ intent: "update_shape", target: { kind: "selected" }, changes: {} }],
+        }),
+      }),
+    ).toThrow("AI 返回的绘图命令格式无效");
+
+    expect(() =>
+      buildParsedAiCommand({
+        text: "移动它",
+        content: JSON.stringify({
+          commands: [{ intent: "move_shape", target: { kind: "selected" } }],
+        }),
+      }),
+    ).toThrow("AI 返回的绘图命令格式无效");
+  });
+
+  it("rejects empty flowchart commands from the model", () => {
+    expect(() =>
+      buildParsedAiCommand({
+        text: "画流程图",
+        content: JSON.stringify({
+          commands: [{ intent: "create_flowchart" }],
+        }),
+      }),
+    ).toThrow("AI 返回的绘图命令格式无效");
+  });
 });
 
 describe("createChatCompletionWithJsonFallback", () => {
