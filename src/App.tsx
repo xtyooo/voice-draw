@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { ExcalidrawCanvas } from "./canvas/ExcalidrawCanvas";
 import { ExcalidrawAdapter } from "./canvas/excalidrawAdapter";
+import { executeValidatedCommands } from "./command/commandExecutor";
 import { parseCommandText } from "./command/commandRouter";
-import { validateCommands } from "./command/validator";
 import type { CommandLogEntry, DrawCommand, ParsedCommand, ShapeRef, ValidateResult } from "./command/types";
 import { resolveVoiceConfirmation } from "./command/voiceConfirmation";
 import { parseWithAi } from "./api/aiClient";
@@ -149,45 +149,51 @@ function App() {
           setEstimatedCost((value) => value + (parsed.estimatedCost ?? 0));
         }
 
-        const validation = validateCommands(parsed.commands, memory);
-        if (validation.kind === "need_confirm") {
-          setConfirmation(validation);
+        const execution = await executeValidatedCommands({
+          commands: parsed.commands,
+          memory,
+          executeOne: async (command) => {
+            const feedback = await executeCommands([command]);
+            return { feedback };
+          },
+        });
+        if (execution.kind === "need_confirm") {
+          setConfirmation(execution);
           addLog({
             id: crypto.randomUUID(),
             spokenText: text,
             parserSource: parsed.source,
             status: "confirm",
-            feedback: validation.question,
+            feedback: execution.question,
             createdAt: startedAt,
             commands: parsed.commands,
           });
           return;
         }
-        if (validation.kind === "failed") {
+        if (execution.kind === "failed") {
           addLog({
             id: crypto.randomUUID(),
             spokenText: text,
             parserSource: parsed.source,
             status: "failed",
-            feedback: validation.reason,
+            feedback: execution.reason,
             createdAt: startedAt,
             commands: parsed.commands,
           });
-          setLatestAction(validation.reason);
+          setLatestAction(execution.reason);
           return;
         }
 
-        const feedback = await executeCommands(validation.commands);
         addLog({
           id: crypto.randomUUID(),
           spokenText: text,
           parserSource: parsed.source,
           status: "success",
-          feedback,
+          feedback: execution.feedback,
           createdAt: startedAt,
           commands: parsed.commands,
         });
-        setLatestAction(feedback);
+        setLatestAction(execution.feedback);
       } catch (error) {
         const message = error instanceof Error ? error.message : "命令执行失败";
         addLog({

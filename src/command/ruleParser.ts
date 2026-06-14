@@ -51,6 +51,11 @@ export function parseRuleCommand(input: string): ParsedCommand | null {
     return null;
   }
 
+  const sequence = parseSequence(input, text);
+  if (sequence) {
+    return sequence;
+  }
+
   const flowchart = parseFlowchart(text);
   if (flowchart) {
     return parsed(input, [flowchart], "已识别为本地流程图命令");
@@ -89,6 +94,76 @@ export function parseRuleCommand(input: string): ParsedCommand | null {
   const del = parseDelete(text);
   if (del) {
     return parsed(input, [del], "已识别为删除对象命令");
+  }
+
+  return null;
+}
+
+function parseSequence(original: string, text: string): ParsedCommand | null {
+  if (!/然后|接着|之后|再|并且/.test(text)) {
+    return null;
+  }
+
+  const parts = text
+    .split(/然后|接着|之后|再|并且/)
+    .map((part) => part.replace(/^[,，。.\s]+|[,，。.\s]+$/g, ""))
+    .filter(Boolean);
+
+  if (parts.length < 2) {
+    return null;
+  }
+
+  const commands: DrawCommand[] = [];
+  for (const part of parts) {
+    const local = parseSingleCommand(part);
+    if (!local) {
+      return null;
+    }
+    commands.push(...local.commands);
+  }
+
+  return parsed(original, commands, `已拆解为 ${commands.length} 个本地绘图步骤`);
+}
+
+function parseSingleCommand(text: string): ParsedCommand | null {
+  const flowchart = parseFlowchart(text);
+  if (flowchart) {
+    return parsed(text, [flowchart], "已识别为本地流程图命令");
+  }
+
+  const utility = parseUtility(text);
+  if (utility) {
+    return parsed(text, [utility], "已识别为画布控制命令");
+  }
+
+  const connect = parseConnect(text);
+  if (connect) {
+    return parsed(text, [connect], "已识别为连接命令");
+  }
+
+  const create = parseCreate(text);
+  if (create) {
+    return parsed(text, [create], "已识别为创建图形命令");
+  }
+
+  const select = parseSelect(text);
+  if (select) {
+    return parsed(text, [select], "已识别为选中对象命令");
+  }
+
+  const update = parseUpdate(text);
+  if (update) {
+    return parsed(text, [update], "已识别为编辑对象命令");
+  }
+
+  const move = parseMove(text);
+  if (move) {
+    return parsed(text, [move], "已识别为移动对象命令");
+  }
+
+  const del = parseDelete(text);
+  if (del) {
+    return parsed(text, [del], "已识别为删除对象命令");
   }
 
   return null;

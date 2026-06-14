@@ -54,6 +54,28 @@ describe("parseRuleCommand", () => {
     });
   });
 
+  it("splits sequential local drawing commands", () => {
+    const parsed = parseRuleCommand("画一个红色圆形，然后画一个蓝色矩形，再画一条从圆形到矩形的箭头");
+    expect(parsed?.commands).toHaveLength(3);
+    expect(parsed?.commands[0]).toMatchObject({ intent: "create_shape", shape: "ellipse" });
+    expect(parsed?.commands[1]).toMatchObject({ intent: "create_shape", shape: "rectangle" });
+    expect(parsed?.commands[2]).toMatchObject({ intent: "connect", lineType: "arrow" });
+  });
+
+  it("splits create and edit commands that depend on selected objects", () => {
+    const parsed = parseRuleCommand("画一个蓝色矩形，然后把它放大一点，再把它改成绿色");
+    expect(parsed?.commands).toHaveLength(3);
+    expect(parsed?.commands[1]).toMatchObject({
+      intent: "update_shape",
+      target: { kind: "selected" },
+      changes: { scale: 1.2 },
+    });
+    expect(parsed?.commands[2]).toMatchObject({
+      intent: "update_shape",
+      changes: { color: "green" },
+    });
+  });
+
   it("detects complex flowchart input for AI", () => {
     expect(requiresAiParsing("画一个登录流程图，从输入账号密码开始，然后校验信息")).toBe(true);
   });
