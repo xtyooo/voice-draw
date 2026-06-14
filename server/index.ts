@@ -3,17 +3,15 @@ import cors from "cors";
 import express from "express";
 import OpenAI from "openai";
 import { z } from "zod";
+import {
+  buildParsedAiCommand,
+  createChatCompletionWithJsonFallback,
+  type ChatClient,
+} from "./aiParser";
 
 const requestSchema = z.object({
   text: z.string().min(1),
   sceneSummary: z.string().optional().default(""),
-});
-
-const aiResponseSchema = z.object({
-  commands: z.array(z.unknown()).default([]),
-  mermaid: z.string().optional(),
-  estimatedCost: z.number().optional(),
-  explanation: z.string().optional(),
 });
 
 const app = express();
@@ -46,15 +44,14 @@ app.post("/api/ai/parse", async (req, res) => {
   });
 
   try {
-    const completion = await client.chat.completions.create({
+    const completion = await createChatCompletionWithJsonFallback(client as unknown as ChatClient, {
       model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
       temperature: 0.1,
-      response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
           content:
-            "你是 VoiceDraw 的命令解析器。只返回 JSON。复杂流程图优先返回 mermaid。commands 必须是数组，mermaid 可选，estimatedCost 可选，explanation 用中文简短说明。",
+            "你是 VoiceDraw 的命令解析器。只返回 JSON，不要写 Markdown。复杂流程图优先返回 mermaid，建议使用 flowchart TD。commands 必须是数组，mermaid 可选，estimatedCost 可选，explanation 用中文简短说明。",
         },
         {
           role: "user",
@@ -74,16 +71,11 @@ app.post("/api/ai/parse", async (req, res) => {
       return;
     }
 
-    const json = aiResponseSchema.parse(JSON.parse(content));
-    const commands = json.commands.length > 0 ? json.commands : json.mermaid ? [{ intent: "create_flowchart", mermaid: json.mermaid }] : [];
-
-    res.json({
-      source: "ai",
+    res.json(buildParsedAiCommand({
       text: parsed.data.text,
-      commands,
-      estimatedCost: json.estimatedCost ?? estimateCost(completion.usage?.total_tokens ?? 0),
-      explanation: json.explanation ?? "AI 已解析复杂指令",
-    });
+      content,
+      totalTokens: completion.usage?.total_tokens,
+    }));
   } catch (error) {
     const message = error instanceof Error ? error.message : "AI 解析失败";
     res.status(502).json({ error: message });
@@ -95,9 +87,3 @@ app.listen(port, () => {
   console.log(`VoiceDraw API listening on http://127.0.0.1:${port}`);
 });
 
-function estimateCost(totalTokens: number): number {
-  if (!totalTokens) {
-    return 0;
-  }
-  return Number(((totalTokens / 1000) * 0.001).toFixed(6));
-}

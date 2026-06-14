@@ -63,6 +63,15 @@ VOICEDRAW_WEB_PORT=5177
 
 The browser never receives the API key. The frontend calls `/api/ai/parse`, and the Node server calls the OpenAI-compatible chat completions endpoint.
 
+DashScope and other OpenAI-compatible services can use the same variables:
+
+```text
+OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+OPENAI_MODEL=qwen3.6-plus
+```
+
+VoiceDraw asks the model for JSON first. If a compatible provider does not support `response_format`, the server retries once without that option and still extracts JSON from plain text or fenced `json` blocks. This keeps the demo usable when different model gateways return slightly different formats.
+
 ## Core Demo Commands
 
 - `画一个红色圆形`

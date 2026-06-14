@@ -6,6 +6,7 @@
 - AI is called only for complex diagram generation or instructions that local rules cannot parse.
 - The app sends text instructions and compact scene summaries, never full canvas screenshots.
 - AI responses must be Mermaid or structured JSON and are validated before execution.
+- The server retries once without `response_format` when an OpenAI-compatible provider does not support strict JSON mode.
 - Repeated demo prompts can be served from local examples when API credentials are missing.
 
 ## UI Metrics
