@@ -77,7 +77,7 @@ h2 {
 
 .toolbar {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -101,26 +101,11 @@ button:disabled {
   cursor: not-allowed;
 }
 
-.toolbar button,
-.quick-actions button,
-.primary-button {
+.toolbar button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-}
-
-.primary-button {
-  width: 100%;
-  background: #2563eb;
-  color: #ffffff;
-  border-color: #2563eb;
-  font-weight: 700;
-}
-
-.primary-button:hover:not(:disabled) {
-  color: #ffffff;
-  background: #1d4ed8;
 }
 
 .panel-section,
@@ -131,8 +116,7 @@ button:disabled {
 }
 
 .transcript-box,
-.parsed-box,
-textarea {
+.parsed-box {
   width: 100%;
   box-sizing: border-box;
   border: 1px solid #d1d5db;
@@ -144,14 +128,6 @@ textarea {
 .transcript-box {
   min-height: 54px;
   padding: 10px;
-  font-size: 14px;
-}
-
-textarea {
-  min-height: 78px;
-  resize: vertical;
-  padding: 10px;
-  font: inherit;
   font-size: 14px;
 }
 
@@ -182,12 +158,16 @@ textarea {
   gap: 6px;
 }
 
-.example-list button,
+.example-list span,
 .candidate-button {
   text-align: left;
   padding: 8px 10px;
   height: auto;
   line-height: 1.35;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #374151;
 }
 
 .candidate-button {
@@ -198,6 +178,12 @@ textarea {
 
 .candidate-button small {
   color: #6b7280;
+}
+
+.confirm-hint {
+  margin: 0;
+  color: #1d4ed8;
+  font-size: 13px;
 }
 
 .confirm-box {
@@ -253,11 +239,6 @@ textarea {
   border-radius: 8px;
   color: #6b7280;
   font-size: 14px;
-}
-
-.quick-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
 }
 
 .canvas-shell {

@@ -1,12 +1,14 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { ExcalidrawCanvas } from "./canvas/ExcalidrawCanvas";
 import { ExcalidrawAdapter } from "./canvas/excalidrawAdapter";
 import { parseCommandText } from "./command/commandRouter";
 import { validateCommands } from "./command/validator";
 import type { CommandLogEntry, DrawCommand, ParsedCommand, ShapeRef, ValidateResult } from "./command/types";
+import { resolveVoiceConfirmation } from "./command/voiceConfirmation";
 import { parseWithAi } from "./api/aiClient";
 import { SceneMemory } from "./memory/sceneMemory";
+import { getAutoExecutableTranscript } from "./voice/autoExecute";
 import { useVoiceInput } from "./voice/useVoiceInput";
 import { VoicePanel } from "./components/VoicePanel";
 import { StatusBar } from "./components/StatusBar";
@@ -25,7 +27,7 @@ function App() {
   const memory = useMemo(() => new SceneMemory(), []);
   const adapterRef = useRef<ExcalidrawAdapter | null>(null);
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
-  const [manualText, setManualText] = useState("");
+  const lastExecutedTextRef = useRef("");
   const [logs, setLogs] = useState<CommandLogEntry[]>([]);
   const [latestParsed, setLatestParsed] = useState<ParsedCommand | null>(null);
   const [confirmation, setConfirmation] = useState<Extract<ValidateResult, { kind: "need_confirm" }> | null>(null);
@@ -36,6 +38,11 @@ function App() {
   const [elementCount, setElementCount] = useState(0);
 
   const voice = useVoiceInput();
+  const { resetTranscript, transcript } = voice;
+
+  const addLog = useCallback((entry: CommandLogEntry) => {
+    setLogs((items) => [entry, ...items].slice(0, 20));
+  }, []);
 
   function handleReady(api: ExcalidrawImperativeAPI) {
     apiRef.current = api;
@@ -48,83 +55,7 @@ function App() {
     setElementCount(apiRef.current?.getSceneElements().length ?? 0);
   }
 
-  async function executeText(textOverride?: string) {
-    const text = ((textOverride ?? voice.transcript) || manualText).trim();
-    if (!text || !adapterRef.current) {
-      return;
-    }
-
-    setBusy(true);
-    const startedAt = createTimestamp();
-    try {
-      const parsed = await parseCommandText({
-        text,
-        sceneSummary: memory.summary(),
-        parseWithAi,
-      });
-      setLatestParsed(parsed);
-      if (parsed.source === "ai") {
-        setAiCalls((value) => value + 1);
-        setEstimatedCost((value) => value + (parsed.estimatedCost ?? 0));
-      }
-
-      const validation = validateCommands(parsed.commands, memory);
-      if (validation.kind === "need_confirm") {
-        setConfirmation(validation);
-        addLog({
-          id: crypto.randomUUID(),
-          spokenText: text,
-          parserSource: parsed.source,
-          status: "confirm",
-          feedback: validation.question,
-          createdAt: startedAt,
-          commands: parsed.commands,
-        });
-        return;
-      }
-      if (validation.kind === "failed") {
-        addLog({
-          id: crypto.randomUUID(),
-          spokenText: text,
-          parserSource: parsed.source,
-          status: "failed",
-          feedback: validation.reason,
-          createdAt: startedAt,
-          commands: parsed.commands,
-        });
-        setLatestAction(validation.reason);
-        return;
-      }
-
-      const feedback = await executeCommands(validation.commands);
-      addLog({
-        id: crypto.randomUUID(),
-        spokenText: text,
-        parserSource: parsed.source,
-        status: "success",
-        feedback,
-        createdAt: startedAt,
-        commands: parsed.commands,
-      });
-      setLatestAction(feedback);
-      setManualText("");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "命令执行失败";
-      addLog({
-        id: crypto.randomUUID(),
-        spokenText: text,
-        parserSource: "ai",
-        status: "failed",
-        feedback: message,
-        createdAt: startedAt,
-      });
-      setLatestAction(message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function executeCommands(commands: DrawCommand[]) {
+  const executeCommands = useCallback(async (commands: DrawCommand[]) => {
     const adapter = adapterRef.current;
     if (!adapter) {
       return "画布尚未准备好";
@@ -136,37 +67,167 @@ function App() {
     }
     setElementCount(apiRef.current?.getSceneElements().length ?? 0);
     return results.at(-1) ?? "命令已执行";
-  }
+  }, []);
 
-  async function chooseCandidate(candidate: ShapeRef) {
-    if (!confirmation) {
-      return;
-    }
-    memory.select(candidate.id);
-    setConfirmation(null);
-    const command = retargetCommand(confirmation.command, candidate, confirmation.role);
-    const feedback = await executeCommands([command]);
-    addLog({
-      id: crypto.randomUUID(),
-      spokenText: "二次确认",
-      parserSource: "rule",
-      status: "success",
-      feedback,
-      createdAt: createTimestamp(),
-      commands: [command],
+  const applyConfirmation = useCallback(
+    async (
+      activeConfirmation: Extract<ValidateResult, { kind: "need_confirm" }>,
+      candidate: ShapeRef,
+      spokenText: string,
+    ) => {
+      memory.select(candidate.id);
+      setConfirmation(null);
+      const command = retargetCommand(activeConfirmation.command, candidate, activeConfirmation.role);
+      const feedback = await executeCommands([command]);
+      addLog({
+        id: crypto.randomUUID(),
+        spokenText,
+        parserSource: "rule",
+        status: "success",
+        feedback,
+        createdAt: createTimestamp(),
+        commands: [command],
+      });
+      setLatestAction(feedback);
+      return feedback;
+    },
+    [addLog, executeCommands, memory],
+  );
+
+  const executeText = useCallback(
+    async (textOverride?: string) => {
+      const text = (textOverride ?? transcript).trim();
+      if (!text || !adapterRef.current) {
+        return;
+      }
+
+      setBusy(true);
+      const startedAt = createTimestamp();
+      try {
+        if (confirmation) {
+          const answer = resolveVoiceConfirmation(text, confirmation.candidates);
+          if (answer.kind === "choose") {
+            await applyConfirmation(confirmation, answer.candidate, text);
+            return;
+          }
+          if (answer.kind === "cancel") {
+            setConfirmation(null);
+            addLog({
+              id: crypto.randomUUID(),
+              spokenText: text,
+              parserSource: "rule",
+              status: "success",
+              feedback: "已取消本次确认",
+              createdAt: startedAt,
+            });
+            setLatestAction("已取消本次确认");
+            return;
+          }
+          if (shouldWaitForConfirmationAnswer(text)) {
+            addLog({
+              id: crypto.randomUUID(),
+              spokenText: text,
+              parserSource: "rule",
+              status: "confirm",
+              feedback: "请说第几个、左边那个、右边那个，或说取消。",
+              createdAt: startedAt,
+            });
+            setLatestAction("等待语音确认");
+            return;
+          }
+          setConfirmation(null);
+        }
+
+        const parsed = await parseCommandText({
+          text,
+          sceneSummary: memory.summary(),
+          parseWithAi,
+        });
+        setLatestParsed(parsed);
+        if (parsed.source === "ai") {
+          setAiCalls((value) => value + 1);
+          setEstimatedCost((value) => value + (parsed.estimatedCost ?? 0));
+        }
+
+        const validation = validateCommands(parsed.commands, memory);
+        if (validation.kind === "need_confirm") {
+          setConfirmation(validation);
+          addLog({
+            id: crypto.randomUUID(),
+            spokenText: text,
+            parserSource: parsed.source,
+            status: "confirm",
+            feedback: validation.question,
+            createdAt: startedAt,
+            commands: parsed.commands,
+          });
+          return;
+        }
+        if (validation.kind === "failed") {
+          addLog({
+            id: crypto.randomUUID(),
+            spokenText: text,
+            parserSource: parsed.source,
+            status: "failed",
+            feedback: validation.reason,
+            createdAt: startedAt,
+            commands: parsed.commands,
+          });
+          setLatestAction(validation.reason);
+          return;
+        }
+
+        const feedback = await executeCommands(validation.commands);
+        addLog({
+          id: crypto.randomUUID(),
+          spokenText: text,
+          parserSource: parsed.source,
+          status: "success",
+          feedback,
+          createdAt: startedAt,
+          commands: parsed.commands,
+        });
+        setLatestAction(feedback);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "命令执行失败";
+        addLog({
+          id: crypto.randomUUID(),
+          spokenText: text,
+          parserSource: "ai",
+          status: "failed",
+          feedback: message,
+          createdAt: startedAt,
+        });
+        setLatestAction(message);
+      } finally {
+        lastExecutedTextRef.current = text;
+        resetTranscript();
+        setBusy(false);
+      }
+    },
+    [addLog, applyConfirmation, confirmation, executeCommands, memory, resetTranscript, transcript],
+  );
+
+  useEffect(() => {
+    const text = getAutoExecutableTranscript({
+      transcript: voice.transcript,
+      busy,
+      lastExecutedText: lastExecutedTextRef.current,
     });
-    setLatestAction(feedback);
-  }
+    if (!text) {
+      return undefined;
+    }
 
-  function addLog(entry: CommandLogEntry) {
-    setLogs((items) => [entry, ...items].slice(0, 20));
-  }
+    const timer = window.setTimeout(() => {
+      void executeText(text);
+    }, 650);
+    return () => window.clearTimeout(timer);
+  }, [busy, executeText, voice.transcript]);
 
   return (
     <div className="app-shell">
       <VoicePanel
         transcript={voice.transcript}
-        manualText={manualText}
         listening={voice.listening}
         supported={voice.supported}
         microphoneAvailable={voice.microphoneAvailable}
@@ -175,17 +236,8 @@ function App() {
         logs={logs}
         confirmation={confirmation}
         examples={examples}
-        onManualTextChange={setManualText}
         onStart={voice.start}
         onStop={voice.stop}
-        onExecute={executeText}
-        onResetTranscript={voice.resetTranscript}
-        onQuickCommand={(text) => {
-          setManualText(text);
-          void executeText(text);
-        }}
-        onConfirmChoose={chooseCandidate}
-        onConfirmCancel={() => setConfirmation(null)}
       />
       <main className="canvas-shell">
         <header className="top-bar">
@@ -207,6 +259,10 @@ function App() {
       </main>
     </div>
   );
+}
+
+function shouldWaitForConfirmationAnswer(text: string) {
+  return /第|号|左|右|上|下|这个|那个|就|选/.test(text);
 }
 
 function createTimestamp() {
